@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"sync/atomic"
@@ -18,21 +17,6 @@ func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 	})
 }
 
-func (cfg *apiConfig) handleMetrics(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "text/plain; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(fmt.Sprintf("Hits: %d", cfg.fileserverHits.Load())))
-}
-
-func (cfg *apiConfig) handleMetricsReset(w http.ResponseWriter, r *http.Request) {
-	cfg.fileserverHits = atomic.Int32{}
-}
-
-func handleHealthz(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("OK"))
-}
-
 func main() {
 	const port = "8080"
 	const filepathRoot = "."
@@ -42,8 +26,9 @@ func main() {
 	mux := http.NewServeMux()
 	mux.Handle("/app/", apiCfg.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot)))))
 	mux.HandleFunc("GET /api/healthz", (handleHealthz))
-	mux.HandleFunc("GET /api/metrics", apiCfg.handleMetrics)
-	mux.HandleFunc("POST /api/reset", apiCfg.handleMetricsReset)
+	mux.HandleFunc("POST /api/validate_chirp", apiCfg.handleValidateChirp)
+	mux.HandleFunc("GET /admin/metrics", apiCfg.handleMetrics)
+	mux.HandleFunc("POST /admin/reset", apiCfg.handleMetricsReset)
 
 	srv := &http.Server{
 		Addr:    ":" + port,
