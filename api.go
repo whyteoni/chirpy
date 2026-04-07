@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 )
 
 type Chirp struct {
@@ -50,12 +51,23 @@ func (cfg *apiConfig) handleValidateChirp(w http.ResponseWriter, r *http.Request
 		respondWithErr(w, 500, fmt.Sprintf("Error marshalling JSON: %s", err))
 		return
 	}
-	if len(params.Body) <= 140 {
+	body := params.Body
+	if len(body) > 140 {
 		type validChirp struct {
 			Valid bool `json:"valid"`
 		}
-		respondWithJSON(w, 200, validChirp{Valid: true})
+		respondWithErr(w, 400, "Chirp is too long.")	
 		return
 	}
-	respondWithErr(w, 400, "Chirp is too long.")
+	var cleanedBody []string
+	for _, word := range strings.Split(body, " ") {
+		switch strings.ToLower(word) {
+		case "kerfuffle", "sharbert", "fornax":
+			cleanedBody = append(cleanedBody, "****")
+		default:
+			cleanedBody = append(cleanedBody, word)
+		}
+
+	}
+	respondWithJSON(w, 200, struct{Body string `json:"cleaned_body"`}{Body: strings.Join(cleanedBody, " ")})
 }
